@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import api from "../api/api";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,12 +35,18 @@ export function useAuth() {
   const login = useCallback(
     async (email, password) => {
       try {
-        const userCheck = await api.get(`${import.meta.env.VITE_API_PATH}/user`, {
-          validateStatus: (status) => status === 200 || status === 401,
-        });
+        const userCheck = await api.get(
+          `${import.meta.env.VITE_API_PATH}/user`,
+          {
+            validateStatus: (status) => status === 200 || status === 401,
+          }
+        );
 
         if (userCheck.status === 401) {
-          const res = await api.post(`${import.meta.env.VITE_API_PATH}/login`, { email, password });
+          const res = await api.post(`${import.meta.env.VITE_API_PATH}/login`, {
+            email,
+            password,
+          });
           if (res.status === 200) {
             localStorage.setItem("auth", "true");
             setIsAuthenticated(true);
@@ -61,7 +67,11 @@ export function useAuth() {
   const register = useCallback(
     async (name, email, password) => {
       try {
-        await api.post(`${import.meta.env.VITE_API_PATH}/register`, { name, email, password });
+        await api.post(`${import.meta.env.VITE_API_PATH}/register`, {
+          name,
+          email,
+          password,
+        });
         navigate("/profile");
         return { success: true };
       } catch (error) {
