@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-
-axios.defaults.baseURL = "http://localhost:8000";
-axios.defaults.withXSRFToken = true;
-axios.defaults.withCredentials = true;
+import api from "../api/axios";
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,7 +10,7 @@ export function useAuth() {
 
   const checkAuth = useCallback(async () => {
     try {
-      const response = await axios.get("/api/user", {
+      const response = await api.get(`${import.meta.env.VITE_API_PATH}/user`, {
         validateStatus: (status) => status === 200 || status === 401,
       });
 
@@ -39,12 +35,12 @@ export function useAuth() {
   const login = useCallback(
     async (email, password) => {
       try {
-        const userCheck = await axios.get("/api/user", {
+        const userCheck = await api.get(`${import.meta.env.VITE_API_PATH}/user`, {
           validateStatus: (status) => status === 200 || status === 401,
         });
 
         if (userCheck.status === 401) {
-          const res = await axios.post("/api/login", { email, password });
+          const res = await api.post(`${import.meta.env.VITE_API_PATH}/login`, { email, password });
           if (res.status === 200) {
             localStorage.setItem("auth", "true");
             setIsAuthenticated(true);
@@ -65,7 +61,7 @@ export function useAuth() {
   const register = useCallback(
     async (name, email, password) => {
       try {
-        await axios.post("/api/register", { name, email, password });
+        await api.post(`${import.meta.env.VITE_API_PATH}/register`, { name, email, password });
         navigate("/profile");
         return { success: true };
       } catch (error) {
@@ -77,7 +73,7 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     try {
-      await axios.post("/api/logout");
+      await api.post(`${import.meta.env.VITE_API_PATH}/logout`);
       localStorage.setItem("auth", "false");
       setIsAuthenticated(false);
       setUser(null);

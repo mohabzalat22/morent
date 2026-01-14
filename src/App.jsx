@@ -13,6 +13,7 @@ import RentalInfo from "./components/payment/RentalInfo";
 import PaymentMethod from "./components/payment/PaymentMethod";
 import Confirmation from "./components/payment/Confirmation";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { Toaster } from "sonner";
 
 // Layout with Navbar and Footer
 const MainLayout = () => {
@@ -32,63 +33,66 @@ const AuthLayout = () => {
 
 function App() {
   return (
-    <Routes>
-      {/* Auth routes without navbar/footer */}
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-
-      {/* Main routes with navbar/footer */}
-      <Route element={<MainLayout />}>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/category"
-          element={
-            <ProtectedRoute>
-              <CategoryPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/detail/:id"
-          element={
-            <ProtectedRoute>
-              <DetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payment/:id"
-          element={
-            <ProtectedRoute>
-              <PaymentPage />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<BillingInfo />} />
-          <Route path="step/1" element={<BillingInfo />} />
-          <Route path="step/2" element={<RentalInfo />} />
-          <Route path="step/3" element={<PaymentMethod />} />
-          <Route path="step/4" element={<Confirmation />} />
+    <>
+      <Toaster richColors position="top-right" />
+      <Routes>
+        {/* Auth routes without navbar/footer */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
-      </Route>
-    </Routes>
+
+        {/* Main routes with navbar/footer */}
+        <Route element={<MainLayout />}>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/category"
+            element={
+              <ProtectedRoute>
+                <CategoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/detail/:id"
+            element={
+              <ProtectedRoute>
+                <DetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payment/:id"
+            element={
+              <ProtectedRoute>
+                <PaymentPage />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<BillingInfo />} />
+            <Route path="step/1" element={<BillingInfo />} />
+            <Route path="step/2" element={<RentalInfo />} />
+            <Route path="step/3" element={<PaymentMethod />} />
+            <Route path="step/4" element={<Confirmation />} />
+          </Route>
+        </Route>
+      </Routes>
+    </>
   );
 }
 
