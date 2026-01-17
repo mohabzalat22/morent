@@ -9,11 +9,11 @@ const api = axios.create({
     Accept: "application/json",
   },
 });
-
+let csrfInitialized = false;
 async function ensureCsrf() {
   if (csrfInitialized) return;
-
-  await api.get("/sanctum/csrf-cookie");
+  const url = api.defaults.baseURL.split("/api")[0] + "/sanctum/csrf-cookie";
+  await api.get(url);
   csrfInitialized = true;
 }
 

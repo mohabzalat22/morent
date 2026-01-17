@@ -1,26 +1,23 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Pagination } from 'swiper/modules';
-import 'swiper/swiper-bundle.css';
-import 'swiper/css/pagination';
-import api from '../api/axios';
-import CarCard from './CarCard';
+import { useState, useEffect, useMemo } from "react";
+import api from "../api/api";
+import CarCard from "./CarCard";
 
 function HomePopularCar() {
   const [data, setData] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(8);
 
   const [pick, setPick] = useState({
     selected: false,
-    location: '',
-    date: '',
-    time: '',
+    location: "",
+    date: "",
+    time: "",
   });
 
   const [drop, setDrop] = useState({
     selected: false,
-    location: '',
-    date: '',
-    time: '',
+    location: "",
+    date: "",
+    time: "",
   });
 
   // Sync drop date with pick date
@@ -33,24 +30,36 @@ function HomePopularCar() {
   // Fetch data based on filters
   useEffect(() => {
     const fetchData = async () => {
-      let filterData = [];
-
-      if (pick.selected && !drop.selected) {
-        filterData.push({ pick });
+      const dataPayload = {};
+      if (pick.selected) {
+        dataPayload.pick = {
+          location: pick.location,
+          datetime: formatDateTime(pick.date, pick.time),
+        };
       }
-      if (!pick.selected && drop.selected) {
-        filterData.push({ drop });
-      }
-      if (pick.selected && drop.selected) {
-        filterData.push({ pick });
-        filterData.push({ drop });
+      if (drop.selected) {
+        dataPayload.drop = {
+          location: drop.location,
+          datetime: formatDateTime(drop.date, drop.time),
+        };
       }
 
       try {
-        const res = await api.post('/api/v1', { data: filterData });
-        setData(res.data);
+        let res;
+        if (Object.keys(dataPayload).length === 0) {
+          // Fetch all cars when no filters are applied
+          res = await api.get("/cars");
+        } else {
+          // Use /cars/filter route with the new structure
+          res = await api.post("/cars/filter", { data: dataPayload });
+        }
+        
+        if (res.data.success) {
+          setData(res.data.data);
+          setVisibleCount(8); // Reset visible count on new search
+        }
       } catch (error) {
-        console.error('Error fetching cars:', error);
+        console.error("Error fetching cars:", error);
       }
     };
 
@@ -62,25 +71,35 @@ function HomePopularCar() {
     const year = today.getFullYear();
     let month = today.getMonth() + 1;
     let day = today.getDate();
-    if (month < 10) month = '0' + month;
-    if (day < 10) day = '0' + day;
+    if (month < 10) month = "0" + month;
+    if (day < 10) day = "0" + day;
     return `${year}-${month}-${day}`;
   };
 
   const getDropDate = () => {
-    return pick.date !== '' ? pick.date : getCurrentDate();
+    return pick.date !== "" ? pick.date : getCurrentDate();
   };
 
   const getTimeList = (startHour = 0) => {
     const timeList = [];
     for (let i = startHour; i < 24; i++) {
       if (i >= 12) {
-        timeList.push(i === 12 ? '12 PM' : `${i - 12} PM`);
+        timeList.push(i === 12 ? "12 PM" : `${i - 12} PM`);
       } else {
-        timeList.push(i === 0 ? '12 AM' : `${i} AM`);
+        timeList.push(i === 0 ? "12 AM" : `${i} AM`);
       }
     }
     return timeList;
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date || !time) return "";
+    const [hStr, ampm] = time.split(" ");
+    let h = parseInt(hStr);
+    if (ampm === "PM" && h !== 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    const formattedHour = h.toString().padStart(2, "0");
+    return `${date} ${formattedHour}:00`;
   };
 
   const pickTimeOptions = useMemo(() => {
@@ -94,14 +113,22 @@ function HomePopularCar() {
 
   const dropTimeOptions = useMemo(() => {
     if (pick.date === drop.date && pick.time) {
-      const timeParts = pick.time.split(' ');
+      const timeParts = pick.time.split(" ");
       let hour = parseInt(timeParts[0]);
-      if (timeParts[1] === 'PM' && hour !== 12) hour += 12;
-      if (timeParts[1] === 'AM' && hour === 12) hour = 0;
+      if (timeParts[1] === "PM" && hour !== 12) hour += 12;
+      if (timeParts[1] === "AM" && hour === 12) hour = 0;
       return getTimeList(hour + 1);
     }
     return getTimeList(0);
   }, [pick.date, pick.time, drop.date]);
+
+  const visibleCars = useMemo(() => {
+    return data.slice(0, visibleCount);
+  }, [data, visibleCount]);
+
+  const handleShowMore = () => {
+    setVisibleCount(prev => prev + 8);
+  };
 
   return (
     <div className="container mx-auto">
@@ -116,17 +143,21 @@ function HomePopularCar() {
               <input
                 type="checkbox"
                 checked={pick.selected}
-                onChange={() => {}}
+                readOnly
                 className="w-4 h-4"
               />
               <label className="ms-2 text-sm">Pick-Up</label>
             </div>
             <div className="flex justify-between mt-3 divide-x">
               <div className="px-2">
-                <strong className="text-gray-800 text-lg block">Locations</strong>
+                <strong className="text-gray-800 text-lg block">
+                  Locations
+                </strong>
                 <select
                   value={pick.location}
-                  onChange={(e) => setPick((p) => ({ ...p, location: e.target.value }))}
+                  onChange={(e) =>
+                    setPick((p) => ({ ...p, location: e.target.value }))
+                  }
                   className="w-full text-gray-600 outline-none"
                 >
                   <option disabled value="">
@@ -141,7 +172,9 @@ function HomePopularCar() {
                 <input
                   type="date"
                   value={pick.date}
-                  onChange={(e) => setPick((p) => ({ ...p, date: e.target.value }))}
+                  onChange={(e) =>
+                    setPick((p) => ({ ...p, date: e.target.value }))
+                  }
                   min={getCurrentDate()}
                   className="text-gray-600 outline-none"
                 />
@@ -150,7 +183,9 @@ function HomePopularCar() {
                 <strong className="text-gray-800 text-lg block">Time</strong>
                 <select
                   value={pick.time}
-                  onChange={(e) => setPick((p) => ({ ...p, time: e.target.value }))}
+                  onChange={(e) =>
+                    setPick((p) => ({ ...p, time: e.target.value }))
+                  }
                   className="text-gray-600 outline-none"
                 >
                   <option disabled value="">
@@ -199,17 +234,21 @@ function HomePopularCar() {
               <input
                 type="checkbox"
                 checked={drop.selected}
-                onChange={() => {}}
+                readOnly
                 className="w-4 h-4"
               />
               <label className="ms-2 text-sm">Drop-Off</label>
             </div>
             <div className="flex justify-between mt-3 divide-x">
               <div className="px-2">
-                <strong className="text-gray-800 text-lg block">Locations</strong>
+                <strong className="text-gray-800 text-lg block">
+                  Locations
+                </strong>
                 <select
                   value={drop.location}
-                  onChange={(e) => setDrop((d) => ({ ...d, location: e.target.value }))}
+                  onChange={(e) =>
+                    setDrop((d) => ({ ...d, location: e.target.value }))
+                  }
                   className="w-full text-gray-600 outline-none"
                 >
                   <option disabled value="">
@@ -224,7 +263,9 @@ function HomePopularCar() {
                 <input
                   type="date"
                   value={drop.date}
-                  onChange={(e) => setDrop((d) => ({ ...d, date: e.target.value }))}
+                  onChange={(e) =>
+                    setDrop((d) => ({ ...d, date: e.target.value }))
+                  }
                   min={getDropDate()}
                   className="text-gray-600 outline-none"
                 />
@@ -233,7 +274,9 @@ function HomePopularCar() {
                 <strong className="text-gray-800 text-lg block">Time</strong>
                 <select
                   value={drop.time}
-                  onChange={(e) => setDrop((d) => ({ ...d, time: e.target.value }))}
+                  onChange={(e) =>
+                    setDrop((d) => ({ ...d, time: e.target.value }))
+                  }
                   className="text-gray-600 outline-none"
                 >
                   <option disabled value="">
@@ -250,31 +293,41 @@ function HomePopularCar() {
           </div>
         </div>
 
-        {/* Popular Cars */}
+        {/* Popular Cars Grid */}
         <div className="py-4 md:py-8">
-          <div className="flex justify-between px-6">
-            <h4 className="text-base text-gray-600">Popular Cars</h4>
-            <a className="text-blue-700 font-bold text-base cursor-pointer">View All</a>
+          <div className="flex justify-between px-6 mb-6">
+            <h4 className="text-base text-gray-400">Popular Cars</h4>
+            <a className="text-blue-700 font-bold text-base cursor-pointer">
+              View All
+            </a>
           </div>
-          <Swiper
-            className="mt-6"
-            slidesPerView={1}
-            modules={[Pagination]}
-            pagination={{ clickable: true }}
-            breakpoints={{
-              768: { slidesPerView: 4 },
-            }}
-          >
-            {data.map((item) => (
-              <SwiperSlide key={item.id}>
-                <CarCard
-                  className="m-1"
-                  {...item}
-                  to={`/detail/${item.id}?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
-                />
-              </SwiperSlide>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {visibleCars.map((item) => (
+              <CarCard
+                key={item.id}
+                {...item}
+                to={`/detail/${item.id}?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
+              />
             ))}
-          </Swiper>
+          </div>
+
+          {data.length > visibleCount && (
+            <div className="flex justify-center mt-12">
+              <button
+                onClick={handleShowMore}
+                className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+              >
+                Show More Cars
+              </button>
+            </div>
+          )}
+          
+          {visibleCount > 8 && data.length <= visibleCount && (
+             <div className="flex justify-center mt-12">
+                <p className="text-gray-400">No more cars to show</p>
+             </div>
+          )}
         </div>
       </div>
     </div>

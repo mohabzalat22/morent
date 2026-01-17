@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import api from "../api/axios";
+import api from "../api/api";
 
 function Navbar() {
   const [search, setSearch] = useState("");
@@ -10,7 +10,7 @@ function Navbar() {
     const getData = async () => {
       if (search) {
         try {
-          const res = await api.get(`/api/v1/category?name=${search}`);
+          const res = await api.get(`/cars?name=${search}`);
           setData(res.data);
         } catch (error) {
           console.error("Search error:", error);

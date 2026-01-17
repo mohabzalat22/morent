@@ -11,6 +11,29 @@ function PickDrop({
   dropTimeOptions,
 }) {
   return (
+    // Example usage of PickDrop component
+
+    // <PickDrop
+    //   pick={{
+    //     selected: true,
+    //     location: "Cairo",
+    //     date: "2026-01-18",
+    //     time: "10:00",
+    //   }}
+    //   setPick={setPick} // a state setter function from useState
+    //   drop={{
+    //     selected: false,
+    //     location: "Alexandria",
+    //     date: "2026-01-20",
+    //     time: "14:00",
+    //   }}
+    //   setDrop={setDrop} // a state setter function from useState
+    //   getCurrentDate={() => "2026-01-17"}
+    //   getDropDate={() => "2026-01-18"}
+    //   pickTimeOptions={["09:00", "10:00", "11:00"]}
+    //   dropTimeOptions={["13:00", "14:00", "15:00"]}
+    // />
+
     <div className="container mx-auto">
       <div className="px-8 py-0.5 md:px-16 md:py-1">
         <div className="flex flex-wrap select-none">
@@ -38,7 +61,7 @@ function PickDrop({
                   onChange={(e) =>
                     setPick((p) => ({ ...p, location: e.target.value }))
                   }
-                  className="w-full text-gray-600 outline-none"
+                  className="w-full text-gray-600 outline-none bg-white"
                 >
                   <option disabled value="">
                     select your city
@@ -66,7 +89,7 @@ function PickDrop({
                   onChange={(e) =>
                     setPick((p) => ({ ...p, time: e.target.value }))
                   }
-                  className="text-gray-600 outline-none"
+                  className="text-gray-600 outline-none bg-white"
                 >
                   <option disabled value="">
                     select your time
@@ -129,7 +152,7 @@ function PickDrop({
                   onChange={(e) =>
                     setDrop((d) => ({ ...d, location: e.target.value }))
                   }
-                  className="w-full text-gray-600 outline-none"
+                  className="w-full text-gray-600 outline-none bg-white"
                 >
                   <option disabled value="">
                     select your city
@@ -157,7 +180,7 @@ function PickDrop({
                   onChange={(e) =>
                     setDrop((d) => ({ ...d, time: e.target.value }))
                   }
-                  className="text-gray-600 outline-none"
+                  className="text-gray-600 outline-none bg-white"
                 >
                   <option disabled value="">
                     select your time

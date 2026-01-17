@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
+import Avatar from "../components/Avatar";
+import { Toaster } from "sonner";
+import { showToast } from "../utils/toast";
 import { useParams, Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/swiper-bundle.css";
 import "swiper/css/pagination";
-import api from "../api/axios";
+import api from "../api/api";
 import CarCard from "../components/CarCard";
 import StarIcon from "../components/icons/StarIcon";
 import StarOutlineIcon from "../components/icons/StarOutlineIcon";
@@ -16,9 +19,7 @@ function DetailPage() {
   const [reviewLoad, setReviewLoad] = useState(true);
   const [dataDetailLoad, setDataDetailLoad] = useState(true);
 
-  // Error handling
-  const [errorMessage, setErrorMessage] = useState("");
-  const [hideErrorMessage, setHideErrorMessage] = useState(true);
+  // Error handling removed (using Sonner)
 
   // Filter states
   const [type, setType] = useState({
@@ -45,6 +46,22 @@ function DetailPage() {
   const [dataFilter, setDataFilter] = useState([]);
 
   // Review modal states
+  // All cars for fallback in Popular Cars
+  const [allCars, setAllCars] = useState([]);
+  // Fetch all cars for fallback
+  useEffect(() => {
+    const fetchAllCars = async () => {
+      try {
+        const res = await api.get("/cars");
+        if (res.data.success) {
+          setAllCars(res.data.data);
+        }
+      } catch (e) {
+        // Optionally show toast
+      }
+    };
+    fetchAllCars();
+  }, []);
   const [stars, setStars] = useState([]);
   const [review, setReview] = useState("");
   const [user, setUser] = useState("");
@@ -65,11 +82,12 @@ function DetailPage() {
   useEffect(() => {
     const getSideData = async () => {
       try {
-        const res = await api.get("/api/v1/category/data");
-        setData(res.data);
+        const res = await api.get("/cars/meta");
+        if (res.data.success) {
+          setData(res.data.data);
+        }
       } catch (e) {
-        setHideErrorMessage(false);
-        setErrorMessage(`Status ${e.response?.status} Side Data.`);
+        showToast(e, true);
       }
     };
     getSideData();
@@ -79,12 +97,14 @@ function DetailPage() {
   useEffect(() => {
     const getDetailData = async () => {
       try {
-        const res = await api.get(`/api/v1/detail/${id}`);
-        setDataDetail(res.data);
-        setDataDetailLoad(false);
+        const res = await api.get(`/cars/${id}`);
+        if (res.data.success) {
+          setDataDetail(res.data.data);
+        }
       } catch (e) {
-        setHideErrorMessage(false);
-        setErrorMessage(`Status ${e.response?.status} Detail Data.`);
+        showToast(e, true);
+      } finally {
+        setDataDetailLoad(false);
       }
     };
     getDetailData();
@@ -94,12 +114,13 @@ function DetailPage() {
   useEffect(() => {
     const getUser = async () => {
       try {
-        const res = await api.get("/api/user");
-        setUser(res.data.name);
-        setProfileImage(res.data.image);
+        const userData = JSON.parse(localStorage.getItem("user"));
+        if (userData) {
+          setUser(userData.name);
+          setProfileImage(userData.profile_image);
+        }
       } catch (e) {
-        setHideErrorMessage(false);
-        setErrorMessage(`Status ${e.response?.status} User.`);
+        showToast(e, true);
       }
     };
     getUser();
@@ -109,14 +130,13 @@ function DetailPage() {
   useEffect(() => {
     const getReviews = async () => {
       try {
-        const userRes = await api.get("/api/user");
-        const res = await api.post("/api/user/data/reviews", {
-          user: userRes.data,
-          car_id: id,
-        });
-        setReviews(res.data);
-        setReviewLoad(false);
+        const res = await api.get(`/cars/${id}/reviews`);
+        if (res.data.success) {
+          setReviews(res.data.data);
+        }
       } catch (e) {
+        showToast(e, true);
+      } finally {
         setReviewLoad(false);
       }
     };
@@ -127,23 +147,26 @@ function DetailPage() {
   useEffect(() => {
     const filter = async () => {
       try {
+        // Get selected types as array of strings
         const filteredType = Object.entries(type)
           .filter(([, value]) => value)
           .map(([key]) => key);
 
+        // Get selected capacities as array of numbers
         const filteredCapacity = Object.entries(capacity)
           .filter(([, value]) => value)
-          .map(([key]) => key.replace("x", ""));
+          .map(([key]) => Number(key.replace("x", "")));
 
-        const res = await api.post("/api/v1/detail/filter", {
+        const res = await api.post("/cars/simple-filter", {
           type: filteredType,
           capacity: filteredCapacity,
           price: priceFilter,
         });
-        setDataFilter(res.data);
+        if (res.data.success) {
+          setDataFilter(res.data.data);
+        }
       } catch (e) {
-        setHideErrorMessage(false);
-        setErrorMessage(`Status ${e.response?.status} Cars Filter.`);
+        showToast(e, true);
       }
     };
     filter();
@@ -152,18 +175,13 @@ function DetailPage() {
   const sendReview = async () => {
     try {
       const starsCount = stars.length ? stars[stars.length - 1] : 0;
-      const userRes = await api.get("/api/user");
-      await api.post("/api/user/data/make/review", {
-        car_id: id,
-        user: userRes.data,
+      const res = await api.post(`/cars/${id}/reviews`, {
         review,
         stars: starsCount,
       });
-      setHideErrorMessage(false);
-      setErrorMessage("Review Sent");
+      showToast({ message: "Review Sent", success: true });
     } catch (e) {
-      setHideErrorMessage(false);
-      setErrorMessage(`Status ${e.response?.status} Send Reviews.`);
+      showToast(e, true);
     }
   };
 
@@ -178,99 +196,112 @@ function DetailPage() {
   return (
     <div className="bg-white">
       <div className="xl:container mx-auto relative">
-        {/* Toast message */}
-        <div className="flex justify-end p-1">
-          {!hideErrorMessage && (
-            <div
-              id="toast-undo"
-              className="bg-gray-800 flex items-center w-full max-w-xs p-4 text-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800"
-              role="alert"
-            >
-              <div className="text-sm font-normal">{errorMessage}</div>
-              <div className="flex items-center ms-auto space-x-2 rtl:space-x-reverse">
-                <button
-                  onClick={() => setHideErrorMessage(true)}
-                  type="button"
-                  className="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 14 14">
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Sonner Toast container */}
+        <Toaster position="top-right" richColors />
 
-        {/* Modal */}
-        <div
-          className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 max-h-1/2 z-50 ${
-            modal ? "" : "hidden"
-          }`}
-        >
-          <div className="bg-gray-100 p-8 rounded-lg border shadow">
-            <div className="flex justify-end">
-              <button onClick={() => setModal(false)}>
-                <svg className="w-8 h-8" fill="gray" viewBox="0 0 512 512">
-                  <path d="M443.6,387.1L312.4,255.4l131.5-130c5.4-5.4,5.4-14.2,0-19.6l-37.4-37.6c-2.6-2.6-6.1-4-9.8-4c-3.7,0-7.2,1.5-9.8,4L256,197.8L124.9,68.3c-2.6-2.6-6.1-4-9.8-4c-3.7,0-7.2,1.5-9.8,4L68,105.9c-5.4,5.4-5.4,14.2,0,19.6l131.5,130L68.4,387.1c-2.6,2.6-4.1,6.1-4.1,9.8c0,3.7,1.4,7.2,4.1,9.8l37.4,37.6c2.7,2.7,6.2,4.1,9.8,4.1c3.5,0,7.1-1.3,9.8-4.1L256,313.1l130.7,131.1c2.7,2.7,6.2,4.1,9.8,4.1c3.5,0,7.1-1.3,9.8-4.1l37.4-37.6c2.6-2.6,4.1-6.1,4.1-9.8C447.7,393.2,446.2,389.7,443.6,387.1z" />
+        {/* Modern Modal */}
+        {modal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-fadeIn"
+              onClick={() => setModal(false)}
+            ></div>
+            {/* Modal Content */}
+            <div className="relative w-full max-w-lg mx-auto bg-white rounded-2xl shadow-2xl border border-gray-200 p-8 z-10 animate-modalPop">
+              {/* Close Button */}
+              <button
+                onClick={() => setModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors"
+                aria-label="Close"
+              >
+                <svg
+                  className="w-7 h-7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
-            </div>
-            <div className="flex my-6">
-              <div className="flex-shrink-0">
-                <img
-                  src={profileImage}
-                  alt=""
-                  className="w-12 h-12 rounded-full"
-                />
-              </div>
-              <div className="flex-grow px-4">
-                <h3 className="text-gray-800 font-bold text-xl">{user}</h3>
-                <h4 className="text-gray-400 text-sm">User</h4>
-              </div>
-            </div>
-            <textarea
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              rows="5"
-              className="block w-full p-2 rounded-md focus:outline-1 focus:border-gray-100 border focus:outline-gray-200 text-gray-800"
-              placeholder="Review here!"
-            />
-            <div className="flex justify-between items-end">
-              <div>
-                <h5 className="mt-4 text-lg text-gray-800 font-bold">RATE</h5>
-                <div className="flex items-center">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <div
-                        key={n}
-                        className="m-1 cursor-pointer"
-                        onClick={() => addStar(n)}
-                      >
-                        {stars.includes(n) ? <StarIcon /> : <StarOutlineIcon />}
-                      </div>
-                    ))}
-                  </div>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex-shrink-0">
+                  {profileImage ? (
+                    <img
+                      src={profileImage}
+                      alt=""
+                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 bg-gray-200 rounded-full flex items-center justify-center">
+                      <Avatar />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-grow">
+                  <h4 className="text-gray-700 text-base font-semibold">
+                    {user}
+                  </h4>
                 </div>
               </div>
-              <div className="my-2">
-                <button
-                  onClick={sendReview}
-                  className="bg-blue-500 text-white text-lg rounded-md py-2 px-4"
-                >
-                  Save
-                </button>
+              <textarea
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                rows="4"
+                className="block w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 text-gray-800 bg-gray-50 resize-none transition"
+                placeholder="Write your review..."
+              />
+              <div className="flex justify-between items-end mt-6">
+                <div>
+                  <h5 className="text-base text-gray-700 font-bold mb-2">
+                    Rate
+                  </h5>
+                  <div className="flex items-center">
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <div
+                          key={n}
+                          className={`mx-1 cursor-pointer transition-transform hover:scale-125 ${
+                            stars.includes(n)
+                              ? "text-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                          onClick={() => addStar(n)}
+                        >
+                          {stars.includes(n) ? (
+                            <StarIcon />
+                          ) : (
+                            <StarOutlineIcon />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    onClick={sendReview}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-base rounded-lg py-2 px-6 shadow-md transition"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
+            {/* Animations */}
+            <style>{`
+              @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+              .animate-fadeIn { animation: fadeIn 0.2s ease; }
+              @keyframes modalPop { 0% { transform: scale(0.95) translateY(20px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+              .animate-modalPop { animation: modalPop 0.25s cubic-bezier(.4,2,.6,1) forwards; }
+            `}</style>
           </div>
-        </div>
+        )}
 
         <div className="xl:grid grid-cols-12">
           {/* Sidebar */}
@@ -352,9 +383,6 @@ function DetailPage() {
               {/* Left - Car Images */}
               <div className="flex justify-center">
                 <div className="flex flex-col">
-                  <div className="w-full xl:w-[450px] xl:h-[360] bg-blue-500 rounded-lg">
-                    <img src={dataDetail.background} alt="" />
-                  </div>
                   {dataDetailLoad ? (
                     <div className="flex justify-center items-center rounded bg-gray-200 h-[300px]">
                       <div role="status">
@@ -386,6 +414,15 @@ function DetailPage() {
                       ))}
                     </div>
                   )}
+                  <div className="w-full xl:w-[480px] xl:h-[360px] bg-gray-200 rounded-lg mt-6">
+                    <div className="flex flex-1 flex-col justify-end h-full">
+                      <img
+                        src={dataDetail.background}
+                        alt=""
+                        className="block"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -545,25 +582,30 @@ function DetailPage() {
                   <div className="divide-y">
                     <div className="my-6">
                       {reviews.map((item, index) => (
-                        <div key={index} className="flex mt-6">
+                        <div key={index} className="flex items-center mt-6">
                           <div className="flex-shrink-0">
-                            <img
-                              src={profileImage}
-                              alt=""
-                              className="w-12 h-12 rounded-full"
-                            />
+                            {profileImage ? (
+                              <img
+                                src={profileImage}
+                                alt=""
+                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-12 h-12">
+                                <Avatar />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-grow px-4">
-                            <div className="flex justify-between">
-                              <h3 className="text-gray-800 font-bold text-xl">
-                                {user}
-                              </h3>
+                            <div className="flex justify-end">
                               <p className="text-sm text-gray-400">
                                 {item.created_at}
                               </p>
                             </div>
                             <div className="flex justify-between">
-                              <h4 className="text-gray-400 text-sm">User</h4>
+                              <h4 className="text-gray-400 text-sm">
+                                {item.user.name}
+                              </h4>
                               <div className="flex items-center">
                                 <div className="flex">
                                   {Array.from({ length: item.stars }).map(
@@ -630,7 +672,7 @@ function DetailPage() {
                   768: { slidesPerView: 3 },
                 }}
               >
-                {dataFilter.map((item) => (
+                {(dataFilter.length > 0 ? dataFilter : allCars).map((item) => (
                   <SwiperSlide key={item.id}>
                     <CarCard
                       className="m-1"

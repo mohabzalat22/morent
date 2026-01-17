@@ -4,7 +4,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination } from "swiper/modules";
 import "swiper/swiper-bundle.css";
 import "swiper/css/pagination";
-import api from "../api/axios";
+import api from "../api/api";
 import CarCard from "../components/CarCard";
 import PickDrop from "../components/PickDrop";
 
@@ -69,8 +69,10 @@ function CategoryPage() {
   useEffect(() => {
     const getData = async () => {
       try {
-        const res = await api.get("/api/v1/category/data");
-        setData(res.data);
+        const res = await api.get("/cars/meta");
+        if (res.data.success) {
+          setData(res.data.data);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -81,16 +83,18 @@ function CategoryPage() {
   // Filter data when filters change
   useEffect(() => {
     const filter = async () => {
-      let filterData = [];
-      if (pick.selected && !drop.selected) {
-        filterData.push({ pick });
+      const dataPayload = {};
+      if (pick.selected) {
+        dataPayload.pick = {
+          location: pick.location,
+          datetime: formatDateTime(pick.date, pick.time),
+        };
       }
-      if (!pick.selected && drop.selected) {
-        filterData.push({ drop });
-      }
-      if (pick.selected && drop.selected) {
-        filterData.push({ pick });
-        filterData.push({ drop });
+      if (drop.selected) {
+        dataPayload.drop = {
+          location: drop.location,
+          datetime: formatDateTime(drop.date, drop.time),
+        };
       }
 
       const filteredType = Object.entries(type)
@@ -102,13 +106,15 @@ function CategoryPage() {
         .map(([key]) => key.replace("x", ""));
 
       try {
-        const res = await api.post("/api/v1/category/filter", {
+        const res = await api.post("/cars/filter", {
           type: filteredType,
           capacity: filteredCapacity,
           price: priceFilter,
-          data: filterData,
+          data: dataPayload,
         });
-        setDataFilter(res.data);
+        if (res.data.success) {
+          setDataFilter(res.data.data);
+        }
       } catch (error) {
         console.error("Error filtering:", error);
       }
@@ -141,6 +147,16 @@ function CategoryPage() {
       }
     }
     return timeList;
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date || !time) return "";
+    const [hStr, ampm] = time.split(" ");
+    let h = parseInt(hStr);
+    if (ampm === "PM" && h !== 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    const formattedHour = h.toString().padStart(2, "0");
+    return `${date} ${formattedHour}:00`;
   };
 
   const pickTimeOptions = useMemo(() => {
