@@ -8,6 +8,7 @@ import PaymentPage from "./pages/PaymentPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
+import WishlistPage from "./pages/WishlistPage";
 import BillingInfo from "./components/payment/BillingInfo";
 import RentalInfo from "./components/payment/RentalInfo";
 import PaymentMethod from "./components/payment/PaymentMethod";
@@ -90,6 +91,14 @@ function App() {
             <Route path="step/3" element={<PaymentMethod />} />
             <Route path="step/4" element={<Confirmation />} />
           </Route>
+          <Route
+            path="/wishlist"
+            element={
+              <ProtectedRoute>
+                <WishlistPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
       </Routes>
     </>
