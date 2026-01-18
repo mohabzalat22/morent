@@ -1,45 +1,74 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/api";
+import Avatar from "../components/Avatar";
+import StarIcon from "../components/icons/StarIcon";
+import StarOutlineIcon from "../components/icons/StarOutlineIcon";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 function ProfilePage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [image, setImage] = useState("");
   const [reservations, setReservations] = useState([]);
+  const [reservationsCars, setReservationsCars] = useState({});
   const [reviews, setReviews] = useState([]);
+  const [reviewsCars, setReviewsCars] = useState({});
   const navigate = useNavigate();
 
+  const fetchCarById = async (carId) => {
+    try {
+      const res = await api.get(`/cars/${carId}`);
+      if (res.data.success) {
+        return res.data.data;
+      }
+      return null;
+    } catch (err) {
+      console.error("Error fetching car data for id", carId, err);
+      return null;
+    }
+  };
   useEffect(() => {
     const fetchData = async () => {
       try {
         const userRes = await api.get("/profile");
         if (userRes.data.success) {
-          setName(userRes.data.data.name);
-          setEmail(userRes.data.data.email);
-          setImage(userRes.data.data.image);
-        }
+          const profile = userRes.data.data;
+          setName(profile.name);
+          setEmail(profile.email);
+          setImage(profile.image);
+          setReservations(profile.reservations || []);
+          setReviews(profile.reviews || []);
 
-        const reservationsRes = await api.get("/reservations");
-        if (reservationsRes.data.success) {
-          setReservations(reservationsRes.data.data);
-        }
+          // Fetch car data for reservations
+          const reservationCarIds = (profile.reservations || []).map(
+            (r) => r.car_id,
+          );
+          const uniqueReservationCarIds = [...new Set(reservationCarIds)];
+          const reservationCarData = {};
+          await Promise.all(
+            uniqueReservationCarIds.map(async (carId) => {
+              reservationCarData[carId] = await fetchCarById(carId);
+            }),
+          );
+          setReservationsCars(reservationCarData);
 
-        // Reviews are nested under cars, but usually we want user reviews. 
-        // The current ProfilePage seems to assume a general reviews list for the user.
-        // If the API doesn't have a direct /user/reviews, we might need to adjust.
-        // However, I'll follow the plan of updating to what was intended if possible.
-        // Actually, looking at the api routes, there isn't a direct /reviews for user yet, 
-        // but let's assume /profile or similar might contain them or we fetch them differently.
-        // For now, I'll use /reservations as an example and check if there's a user reviews endpoint.
-        // The user's routes file doesn't show a direct /reviews for authenticated user outside of cars.
-        // But the previous code was calling /api/user/data/reviews.
-        // I'll stick to updating to logical equivalents if they exist.
+          // Fetch car data for reviews
+          const reviewCarIds = (profile.reviews || []).map((r) => r.car_id);
+          const uniqueReviewCarIds = [...new Set(reviewCarIds)];
+          const reviewCarData = {};
+          await Promise.all(
+            uniqueReviewCarIds.map(async (carId) => {
+              reviewCarData[carId] = await fetchCarById(carId);
+            }),
+          );
+          setReviewsCars(reviewCarData);
+        }
       } catch (error) {
         console.error("Error fetching profile data:", error);
       }
     };
-
     fetchData();
   }, []);
 
@@ -53,117 +82,192 @@ function ProfilePage() {
   };
 
   return (
-    <div className="container mx-auto">
-      <div className="mt-12 bg-gray-200 rounded-md p-4">
-        <div className="flex justify-end gap-2">
-          <Link to="/">
-            <button className="bg-blue-500 p-2 text-white text-lg rounded">
-              Home
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <Navbar />
+      <div className="flex flex-1 w-full max-w-7xl mx-auto py-8 px-2 gap-8">
+        {/* Sidebar */}
+        <aside className="w-72 min-w-[220px] max-w-xs bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 flex flex-col items-center sticky top-8 self-start h-fit">
+          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow mb-4 bg-white flex items-center justify-center">
+            {image ? (
+              <img
+                src={image}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Avatar />
+            )}
+          </div>
+          <h2 className="text-xl font-bold mb-1 text-gray-800 dark:text-white">
+            {name}
+          </h2>
+          <p className="text-gray-500 text-sm mb-6">{email}</p>
+          <nav className="flex flex-col gap-2 w-full">
+            <button className="w-full text-left px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold">
+              Profile
             </button>
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="bg-blue-500 p-2 text-white text-lg rounded"
-          >
-            Log out
-          </button>
-        </div>
-        <div className="w-[200px] h-[200px] object-cover overflow-hidden rounded-xl">
-          <img src={image} alt="" className="" />
-        </div>
-        <div className="mt-8">
-          <h1 className="text-xl text-gray-500 font-bold my-6">Informations</h1>
-          <p className="bg-gray-100 p-2 text-lg m-2 rounded-md">{name}</p>
-          <p className="bg-gray-100 p-2 text-lg m-2 rounded-md">{email}</p>
-        </div>
-        <h1 className="text-xl text-gray-500 font-bold my-6">Reservations</h1>
-        <table className="table-auto w-full border-collapse border border-slate-500">
-          <thead className="bg-gray-800">
-            <tr>
-              <th className="border border-slate-500 text-white text-lg py-1 w-16">
-                ID
-              </th>
-              <th className="border border-slate-500 text-white text-lg py-1">
-                Pick
-              </th>
-              <th className="border border-slate-500 text-white text-lg py-1">
-                Drop
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {reservations.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="border border-slate-500 text-center">
-                  {index + 1}
-                </td>
-                <td className="border border-slate-500">
-                  <div className="flex justify-between p-4">
-                    <div>Location</div>
-                    <div>
-                      <span className="ms-10">{item.pick}</span>
+            <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-50 text-gray-700 dark:text-gray-200">
+              Reservations
+            </button>
+            <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-50 text-gray-700 dark:text-gray-200">
+              Reviews
+            </button>
+            <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-50 text-gray-700 dark:text-gray-200">
+              Payments
+            </button>
+          </nav>
+          <div className="mt-8 flex flex-col gap-2 w-full">
+            <Link to="/">
+              <button className="w-full bg-blue-600 text-white font-bold px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+                Home
+              </button>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold px-4 py-2 rounded-lg shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+            >
+              Log out
+            </button>
+          </div>
+        </aside>
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col gap-8">
+          {/* Reservations Section */}
+          <section>
+            <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
+              Reservations
+            </h3>
+            <div className="space-y-4">
+              {reservations.length === 0 ? (
+                <div className="text-gray-400">No reservations found.</div>
+              ) : (
+                reservations.map((item, index) => {
+                  const car = reservationsCars[item.car_id];
+                  return (
+                    <div
+                      key={item.id || index}
+                      className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between shadow"
+                    >
+                      <div className="flex-1">
+                        <div className="flex flex-col md:flex-row md:gap-8">
+                          <div>
+                            <div className="text-gray-500 text-xs">
+                              Pick Location
+                            </div>
+                            <div className="font-semibold text-gray-800 dark:text-gray-100">
+                              {item.pick_location}
+                            </div>
+                            <div className="text-gray-400 text-xs">
+                              {item.start_time}
+                            </div>
+                          </div>
+                          <div className="mt-2 md:mt-0">
+                            <div className="text-gray-500 text-xs">
+                              Drop Location
+                            </div>
+                            <div className="font-semibold text-gray-800 dark:text-gray-100">
+                              {item.drop_location}
+                            </div>
+                            <div className="text-gray-400 text-xs">
+                              {item.end_time}
+                            </div>
+                          </div>
+                        </div>
+                        {car && (
+                          <div className="my-2 py-2 flex items-center gap-2">
+                            {car.image && (
+                              <img
+                                src={car.image}
+                                alt={car.name}
+                                className="max-w-30 h-10 object-cover rounded"
+                              />
+                            )}
+                            <div>
+                              <div className="font-bold text-blue-700">
+                                {car.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {car.brand}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 md:mt-0 flex-shrink-0">
+                        <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+                          Reservation #{index + 1}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-between border border-white border-t-slate-700 p-4">
-                    <div>Date</div>
-                    <div>
-                      <span className="ms-10">{item.start_time}</span>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          {/* Reviews Section */}
+          <section>
+            <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
+              Reviews
+            </h3>
+            <div className="space-y-4">
+              {reviews.length === 0 ? (
+                <div className="text-gray-400">No reviews found.</div>
+              ) : (
+                reviews.map((item, index) => {
+                  const car = reviewsCars[item.car_id];
+                  return (
+                    <div
+                      key={item.id || index}
+                      className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between shadow"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-white flex items-center justify-center border">
+                          <Avatar />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800 dark:text-gray-100">
+                            {car ? car.name : `Car #${item.car_id}`}
+                          </div>
+                          <div className="text-gray-500 text-xs">
+                            {item.review}
+                          </div>
+                        </div>
+                        {car && car.image && (
+                          <img
+                            src={car.image}
+                            alt={car.name}
+                            className="max-w-30 h-8 object-cover rounded ml-2"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 mt-2 md:mt-0">
+                        {Array.from({ length: item.stars }).map((_, i) => (
+                          <StarIcon key={i} />
+                        ))}
+                        {Array.from({ length: 5 - item.stars }).map((_, i) => (
+                          <StarOutlineIcon key={i} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="border border-slate-500">
-                  <div className="flex justify-between p-4">
-                    <div>Location</div>
-                    <div>
-                      <span className="ms-10">{item.drop}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between border border-white border-t-slate-700 p-4">
-                    <div>Date</div>
-                    <div>
-                      <span className="ms-10">{item.end_time}</span>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <h1 className="text-xl text-gray-500 font-bold my-6">Reviews</h1>
-        <table className="table-auto w-full border-collapse border border-slate-500">
-          <thead className="bg-gray-800">
-            <tr>
-              <th className="border border-slate-500 text-white text-lg py-2 w-16">
-                ID
-              </th>
-              <th className="border border-slate-500 text-white text-lg py-2">
-                car_id
-              </th>
-              <th className="border border-slate-500 text-white text-lg py-2">
-                review
-              </th>
-              <th className="border border-slate-500 text-white text-lg py-2">
-                stars
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {reviews.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="border border-slate-500 p-1 text-center">
-                  {index + 1}
-                </td>
-                <td className="border border-slate-500 p-1 text-center">
-                  {item.car_id}
-                </td>
-                <td className="border border-slate-500 p-1">{item.review}</td>
-                <td className="border border-slate-500 p-1">{item.stars}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <h1 className="text-xl text-gray-500 font-bold my-6">Payments</h1>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          {/* Payments Section (Placeholder) */}
+          <section>
+            <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-4">
+              Payments
+            </h3>
+            <div className="bg-gray-100 dark:bg-gray-700 rounded-xl p-4 text-gray-400 text-center">
+              Payment history and details coming soon.
+            </div>
+          </section>
+        </main>
       </div>
+      <Footer />
     </div>
   );
 }
