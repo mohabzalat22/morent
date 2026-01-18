@@ -328,7 +328,7 @@ function DetailPage() {
                       )}
                     </div>
                   </li>
-                )
+                ),
               )}
             </ul>
 
@@ -456,17 +456,39 @@ function DetailPage() {
                         </h3>
                         <div className="flex items-center">
                           <div className="flex py-2">
-                            {[1, 2, 3, 4].map((i) => (
-                              <div key={i} className="m-1">
-                                <StarIcon className="w-4 h-4" />
-                              </div>
-                            ))}
-                            <div className="m-1">
-                              <StarOutlineIcon className="w-4 h-4" />
-                            </div>
+                            {(() => {
+                              const totalReviews = reviews.length;
+                              const avgRating =
+                                totalReviews > 0
+                                  ? reviews.reduce(
+                                      (sum, r) => sum + r.stars,
+                                      0,
+                                    ) / totalReviews
+                                  : 0;
+                              const filledStars = Math.round(avgRating);
+                              return (
+                                <>
+                                  {Array.from({ length: filledStars }).map(
+                                    (_, i) => (
+                                      <div key={i} className="m-1">
+                                        <StarIcon className="w-4 h-4 text-yellow-400" />
+                                      </div>
+                                    ),
+                                  )}
+                                  {Array.from({ length: 5 - filledStars }).map(
+                                    (_, i) => (
+                                      <div key={i} className="m-1">
+                                        <StarOutlineIcon className="w-4 h-4 text-gray-300" />
+                                      </div>
+                                    ),
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                           <h4 className="ms-2 text-gray-600 font-semibold text-sm">
-                            440+ Reviewer
+                            {reviews.length} Reviewer
+                            {reviews.length !== 1 ? "s" : ""}
                           </h4>
                         </div>
                       </div>
@@ -613,14 +635,14 @@ function DetailPage() {
                                       <div key={i} className="m-1">
                                         <StarIcon className="w-4 h-4" />
                                       </div>
-                                    )
+                                    ),
                                   )}
                                   {Array.from({ length: 5 - item.stars }).map(
                                     (_, i) => (
                                       <div key={i} className="m-1">
                                         <StarOutlineIcon className="w-4 h-4" />
                                       </div>
-                                    )
+                                    ),
                                   )}
                                 </div>
                               </div>
