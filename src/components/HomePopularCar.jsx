@@ -307,7 +307,7 @@ function HomePopularCar() {
               <CarCard
                 key={item.id}
                 {...item}
-                to={`/detail/${item.id}?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
+                to={`/cars/${item.id}`}
               />
             ))}
           </div>

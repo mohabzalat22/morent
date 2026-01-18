@@ -11,7 +11,7 @@ function Navbar() {
       if (search) {
         try {
           const res = await api.get(`/cars?name=${search}`);
-          setData(res.data);
+          setData(res.data.data);
         } catch (error) {
           console.error("Search error:", error);
         }
@@ -25,6 +25,8 @@ function Navbar() {
   const handleLinkClick = () => {
     setSearch("");
   };
+
+
 
   return (
     <div className="bg-white">
@@ -63,13 +65,13 @@ function Navbar() {
                 />
               </div>
               {data.length > 0 && (
-                <div className="hidden lg:block absolute w-full text-lg border text-gray-700 bg-gray-100 p-4 rounded-md m-1">
+                <div className="absolute w-full text-lg border text-gray-700 bg-white p-4 rounded-md m-1 shadow-lg z-50">
                   <ul>
                     {data.map((item, index) => (
                       <li key={index}>
                         <Link
                           onClick={handleLinkClick}
-                          to={`/category?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
+                          to={`/cars/${item.id}`}
                           className="hover:bg-gray-200 block p-2 m-1"
                         >
                           {item.name}
@@ -157,13 +159,13 @@ function Navbar() {
               placeholder="Search something here"
             />
             {data.length > 0 && (
-              <div className="lg:hidden absolute w-full text-lg border text-gray-700 bg-gray-100 p-4 rounded-md m-1">
+              <div className="absolute w-full text-lg border text-gray-700 bg-white p-4 rounded-md m-1 shadow-lg z-50">
                 <ul>
                   {data.map((item, index) => (
                     <li key={index}>
                       <Link
                         onClick={handleLinkClick}
-                        to={`/category?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
+                        to={`/cars/${item.id}`}
                         className="hover:bg-gray-200 block p-2 m-1"
                       >
                         {item.name}

@@ -70,7 +70,7 @@ function App() {
             }
           />
           <Route
-            path="/detail/:id"
+            path="/cars/:id"
             element={
               <ProtectedRoute>
                 <DetailPage />

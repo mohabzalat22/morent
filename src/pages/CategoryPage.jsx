@@ -12,6 +12,7 @@ function CategoryPage() {
   const [searchParams] = useSearchParams();
   const [data, setData] = useState([]);
   const [dataFilter, setDataFilter] = useState([]);
+  const [searchName, setSearchName] = useState("");
 
   const [type, setType] = useState({
     sport: false,
@@ -45,16 +46,22 @@ function CategoryPage() {
     time: "",
   });
 
-  // Initialize type and capacity from URL
+  // Initialize type, capacity, and name from URL
   useEffect(() => {
     const initType = searchParams.get("type");
     const initCapacity = searchParams.get("capacity");
+    const initName = searchParams.get("name");
 
     if (initType) {
       setType((prev) => ({ ...prev, [initType]: true }));
     }
     if (initCapacity) {
       setCapacity((prev) => ({ ...prev, [`x${initCapacity}`]: true }));
+    }
+    if (initName) {
+      setSearchName(initName);
+    } else {
+      setSearchName("");
     }
   }, [searchParams]);
 
@@ -110,6 +117,7 @@ function CategoryPage() {
           type: filteredType,
           capacity: filteredCapacity,
           price: priceFilter,
+          name: searchName,
           data: dataPayload,
         });
         if (res.data.success) {
@@ -121,7 +129,7 @@ function CategoryPage() {
     };
 
     filter();
-  }, [type, capacity, priceFilter, pick, drop]);
+  }, [type, capacity, priceFilter, pick, drop, searchName]);
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -299,7 +307,7 @@ function CategoryPage() {
                     <CarCard
                       className="m-1"
                       {...item}
-                      to={`/detail/${item.id}?name=${item.name}&type=${item.model}&capacity=${item.capacity}`}
+                      to={`/cars/${item.id}`}
                     />
                   </SwiperSlide>
                 ))}
