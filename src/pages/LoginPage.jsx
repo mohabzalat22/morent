@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../api/api";
-import loginBg from "../assets/register-bg.png"; // Make sure to import the asset
+import { useAuth } from "../context/AuthContext";
+import loginBg from "../assets/register-bg.png";
 import { showToast } from "../utils/toast";
 
 function LoginPage() {
@@ -12,6 +12,15 @@ function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const { login, user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/profile");
+    }
+  }, [user, navigate]);
+
+  if (user) return null;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -24,26 +33,14 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      // First check if already authenticated
-      const user = await api.get(`/user`, {
-        validateStatus: (status) => status === 200 || status === 401,
+      const res = await login({
+        email,
+        password,
+        remember: rememberMe,
       });
 
-      if (user.status === 401) {
-        // Attempt login
-        const res = await api.post(`/login`, {
-          email,
-          password,
-          remember: rememberMe, // Sending remember me status to API
-        });
-
-        if (res.status === 200) {
-          showToast(res.data);
-          navigate("/profile");
-        }
-      } else {
-        // Already authenticated
-        showToast({ success: true, message: "Welcome back!" });
+      if (res.status === 200) {
+        showToast(res.data);
         navigate("/profile");
       }
     } catch (error) {

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../api/api";
+import { useAuth } from "../context/AuthContext";
 import registerBg from "../assets/register-bg.png";
 import { showToast } from "../utils/toast";
 
@@ -14,6 +14,15 @@ function RegisterPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const { register, user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/profile");
+    }
+  }, [user, navigate]);
+
+  if (user) return null;
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -33,15 +42,17 @@ function RegisterPage() {
     }
 
     try {
-      const res = await api.post(`/register`, {
+      const res = await register({
         name,
         email,
         password,
-        password_confirmation: confirmPassword, // Sending if API expects it, otherwise it's just validated client-side
+        password_confirmation: confirmPassword,
       });
 
-      showToast(res.data);
-      navigate("/profile");
+      if (res.status === 200 || res.status === 201) {
+        showToast(res.data);
+        navigate("/profile");
+      }
     } catch (error) {
       console.error("Register error:", error);
       showToast(error, true);
